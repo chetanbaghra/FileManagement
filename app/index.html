@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Limited Tender Manager</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{
+  --navy:#1A2742;--blue:#2E5BBA;--blue-light:#4A7DD4;--accent:#E8A020;
+  --bg:#F4F6FA;--card:#FFFFFF;--text:#1A2742;--mid:#4A5568;--light:#718096;
+  --border:#D1D9E6;--border-lt:#E8EDF5;--danger:#E74C3C;--success:#27AE60;
+  --r:8px;--sh:0 2px 12px rgba(26,39,66,.08);--sh-lg:0 8px 32px rgba(26,39,66,.14);
+  /* stage colors */
+  --s1:#8E44AD;--s2:#2980B9;--s3:#E67E22;--s4:#27AE60;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+.app{display:flex;flex-direction:column;min-height:100vh;}
+.layout{display:flex;flex:1;min-height:0;}
+/* sidebar */
+.sidebar{width:228px;background:var(--navy);display:flex;flex-direction:column;padding:16px 10px;gap:3px;flex-shrink:0;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:var(--r);border:none;background:transparent;color:rgba(255,255,255,.6);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;font-weight:500;width:100%;text-align:left;transition:all .15s;}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff;}
+.nav-item.active{background:var(--accent);color:var(--navy);font-weight:700;}
+.nav-sep{height:1px;background:rgba(255,255,255,.1);margin:8px 4px;}
+.nav-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.3);padding:6px 14px 2px;}
+/* header */
+.header{background:var(--navy);border-bottom:3px solid var(--accent);}
+.header-inner{display:flex;align-items:center;justify-content:space-between;padding:13px 26px;}
+.logo-area{display:flex;align-items:center;gap:13px;}
+.logo-icon{width:42px;height:42px;background:var(--accent);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;border-radius:6px;letter-spacing:.5px;}
+.app-title{color:#fff;font-size:17px;font-weight:700;}
+.app-sub{color:rgba(255,255,255,.5);font-size:11.5px;margin-top:1px;}
+.ref-badge{background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);font-size:11.5px;font-family:'IBM Plex Mono',monospace;padding:5px 13px;border-radius:4px;border:1px solid rgba(255,255,255,.12);}
+/* content */
+.content{flex:1;overflow-y:auto;padding:28px 36px;}
+.panel{max-width:960px;}
+.panel-hdr{margin-bottom:24px;}
+.panel-hdr h2{font-size:21px;font-weight:700;color:var(--navy);}
+.panel-hdr p{color:var(--mid);font-size:13.5px;margin-top:3px;}
+.sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--blue);border-bottom:2px solid var(--border-lt);padding-bottom:7px;margin-bottom:14px;}
+/* grids */
+.g1{display:grid;grid-template-columns:1fr;gap:14px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+/* fields */
+.fld{display:flex;flex-direction:column;gap:5px;}
+.fld label{font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.5px;}
+.fld input,.fld select,.fld textarea{padding:9px 13px;border:1.5px solid var(--border);border-radius:var(--r);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--text);background:var(--card);transition:border .15s;}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,91,186,.1);}
+.fld input.ro,.fld select.ro{background:#F0F3F8;color:var(--light);cursor:default;}
+.fld input.af,.fld select.af{background:#FFFDE7;border-color:#F5C84A;}
+.fld textarea{resize:vertical;}
+.unit-row{display:flex;gap:8px;}.unit-row input{flex:1;}.unit-row select{width:110px;flex-shrink:0;}
+.ref-prev{background:#EEF2FB;border:1px solid #C5D3EF;border-radius:var(--r);padding:9px 14px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--blue);margin-top:3px;}
+.words-prev{background:#F0FFF4;border:1px solid #A9DFBF;border-radius:6px;padding:6px 12px;font-size:12.5px;color:#1E8449;font-style:italic;margin-top:3px;}
+/* buttons */
+.btn{padding:9px 20px;border:none;border-radius:var(--r);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;font-weight:600;cursor:pointer;transition:all .15s;}
+.btn-blue{background:var(--blue);color:#fff;}.btn-blue:hover{background:var(--blue-light);}
+.btn-out{background:transparent;color:var(--blue);border:1.5px solid var(--blue);}.btn-out:hover{background:var(--blue);color:#fff;}
+.btn-red{background:transparent;color:var(--danger);border:1px solid var(--danger);padding:5px 10px;font-size:12px;border-radius:5px;cursor:pointer;}
+.btn-red:hover{background:var(--danger);color:#fff;}
+.btn-sm{padding:6px 14px;font-size:12.5px;}
+.btn-accent{background:var(--accent);color:var(--navy);font-weight:700;}.btn-accent:hover{filter:brightness(1.05);}
+/* gen buttons */
+.gen-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px;}
+.btn-gen{width:100%;padding:15px;border:none;border-radius:var(--r);font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;}
+.btn-gen.navy{background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;box-shadow:0 4px 18px rgba(46,91,186,.3);}
+.btn-gen.teal{background:linear-gradient(135deg,#16A085,#1ABC9C);color:#fff;box-shadow:0 4px 18px rgba(22,160,133,.3);}
+.btn-gen:hover:not([disabled]){transform:translateY(-2px);}
+.btn-gen[disabled]{opacity:.5;cursor:not-allowed;transform:none!important;}
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
+.chip{display:flex;align-items:center;gap:7px;background:var(--blue);color:#fff;padding:5px 11px;border-radius:18px;font-size:12.5px;font-weight:500;}
+.chip-n{background:rgba(255,255,255,.25);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;}
+.chip-x{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:13px;padding:0;line-height:1;}.chip-x:hover{color:#fff;}
+/* supplier list */
+.sup-list{display:flex;flex-direction:column;gap:7px;}
+.sup-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card);border:1.5px solid var(--border-lt);border-radius:var(--r);transition:all .15s;}
+.sup-row.sel{border-color:var(--blue);background:#EEF2FB;}
+.sup-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;}
+.sup-info{flex:1;}.sup-name{font-weight:600;font-size:13.5px;}.sup-meta{font-size:11.5px;color:var(--light);margin-top:1px;}
+/* budget heads */
+.bh-list{display:flex;flex-direction:column;gap:7px;margin-bottom:12px;}
+.bh-row{display:flex;align-items:center;gap:9px;padding:11px 14px;background:var(--card);border:1.5px solid var(--border-lt);border-radius:var(--r);}
+.bh-row.R{border-left:4px solid #16A085;}.bh-row.C{border-left:4px solid #8E44AD;}
+.bh-tag{font-size:9px;font-weight:700;padding:2px 7px;border-radius:9px;text-transform:uppercase;white-space:nowrap;}
+.bh-tag.R{background:#E8F8F5;color:#16A085;}.bh-tag.C{background:#F5EEF8;color:#8E44AD;}
+.bh-info{flex:1;}.bh-name{font-weight:600;font-size:12.5px;}.bh-det{font-size:11px;color:var(--light);margin-top:1px;}
+/* checklist */
+.cl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.cl-item{display:flex;flex-direction:column;gap:5px;background:var(--card);border:1px solid var(--border-lt);border-radius:var(--r);padding:12px;}
+.cl-item label{font-size:11.5px;font-weight:600;color:var(--mid);}
+.cl-item select{padding:7px 11px;border:1.5px solid var(--border);border-radius:5px;font-size:13.5px;font-family:'IBM Plex Sans',sans-serif;background:var(--bg);}
+/* summary */
+.sum-card{background:var(--card);border:1.5px solid var(--border-lt);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);}
+.sum-row{display:flex;padding:11px 16px;border-bottom:1px solid var(--border-lt);font-size:13.5px;gap:14px;}
+.sum-row:last-child{border-bottom:none;}
+.sum-row span{width:170px;color:var(--mid);font-weight:500;flex-shrink:0;}
+.sum-row strong{color:var(--text);font-weight:600;}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.ck{padding:9px 13px;border-radius:var(--r);font-size:12.5px;font-weight:500;display:flex;align-items:center;gap:7px;}
+.ck.ok{background:#EAFAF1;color:#1E8449;border:1px solid #A9DFBF;}
+.ck.no{background:#FDEDEC;color:#C0392B;border:1px solid #F5B7B1;}
+.doc-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.doc-item{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--border-lt);border-radius:var(--r);padding:12px;}
+.doc-ic{font-size:20px;}.doc-nm{font-weight:600;font-size:12.5px;}.doc-fl{font-size:10.5px;color:var(--light);font-family:'IBM Plex Mono',monospace;margin-top:1px;}
+/* boxes */
+.warn{background:#FEF9E7;border:1.5px solid #F9E79F;border-radius:var(--r);padding:11px 15px;font-size:12.5px;color:#7D6608;margin-top:14px;}
+.ok-box{background:#EAFAF1;border:1.5px solid #A9DFBF;border-radius:var(--r);padding:12px 16px;font-size:13.5px;color:#1E8449;font-weight:500;}
+.info-box{background:#EEF2FB;border:1.5px solid #C5D3EF;border-radius:var(--r);padding:10px 14px;font-size:12.5px;color:var(--blue);margin-bottom:12px;}
+.add-form{background:#F8FAFF;border:1.5px dashed var(--blue);border-radius:var(--r);padding:18px;}
+.empty{color:var(--light);font-size:13.5px;padding:11px;background:var(--bg);border-radius:var(--r);margin-bottom:7px;}
+/* ── DASHBOARD ── */
+.dash-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.stat-card{background:var(--card);border-radius:var(--r);padding:18px 20px;box-shadow:var(--sh);border-left:4px solid var(--blue);}
+.stat-card.s1{border-color:var(--s1);}.stat-card.s2{border-color:var(--s2);}.stat-card.s3{border-color:var(--s3);}.stat-card.s4{border-color:var(--s4);}
+.stat-num{font-size:28px;font-weight:800;color:var(--navy);}
+.stat-lbl{font-size:11.5px;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+/* WO cards */
+.wo-list{display:flex;flex-direction:column;gap:12px;}
+.wo-card{background:var(--card);border:1.5px solid var(--border-lt);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;transition:box-shadow .2s;}
+.wo-card:hover{box-shadow:var(--sh-lg);}
+.wo-card-top{padding:14px 18px;display:flex;align-items:flex-start;gap:14px;cursor:pointer;}
+.wo-stage-bar{width:4px;border-radius:2px;flex-shrink:0;align-self:stretch;}
+.wo-main{flex:1;min-width:0;}
+.wo-ref{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--mid);margin-bottom:3px;}
+.wo-name{font-weight:700;font-size:14.5px;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wo-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;}
+.wo-tag{font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;background:var(--bg);color:var(--mid);border:1px solid var(--border-lt);}
+.wo-tag.cost{background:#EEF2FB;color:var(--blue);}
+.wo-tag.btype{background:#F5EEF8;color:#8E44AD;}
+.wo-tag.btype.R{background:#E8F8F5;color:#16A085;}
+.wo-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+/* stage progress */
+.stage-prog{padding:14px 18px;background:#FAFBFD;border-top:1px solid var(--border-lt);}
+.stage-phases{display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
+.phase-block{display:flex;flex-direction:column;gap:4px;}
+.phase-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:5px 8px;color:#fff;border-radius:4px 4px 0 0;text-align:center;}
+.phase-label.p1{background:var(--s1);}.phase-label.p2{background:var(--s2);}.phase-label.p3{background:var(--s3);}.phase-label.p4{background:var(--s4);}
+.phase-steps{display:flex;flex-direction:column;gap:3px;padding:6px 6px;}
+.step-item{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:4px;cursor:pointer;transition:background .1s;}
+.step-item:hover{background:rgba(0,0,0,.04);}
+.step-chk{width:15px;height:15px;border-radius:3px;border:1.5px solid var(--border);background:var(--card);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;transition:all .15s;cursor:pointer;}
+.step-chk.done{border-color:transparent;}
+.step-chk.done.p1{background:var(--s1);}.step-chk.done.p2{background:var(--s2);}.step-chk.done.p3{background:var(--s3);}.step-chk.done.p4{background:var(--s4);}
+.step-lbl{font-size:11.5px;color:var(--mid);}.step-lbl.done{color:var(--text);font-weight:600;}
+/* overall progress bar */
+.prog-wrap{margin-top:10px;}
+.prog-bar-bg{height:6px;background:var(--border-lt);border-radius:3px;overflow:hidden;}
+.prog-bar-fill{height:100%;border-radius:3px;transition:width .4s;}
+.prog-pct{font-size:11px;color:var(--mid);margin-top:3px;}
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(26,39,66,.45);z-index:200;display:flex;align-items:center;justify-content:center;}
+.modal{background:var(--card);border-radius:12px;width:540px;max-width:95vw;max-height:88vh;overflow-y:auto;box-shadow:var(--sh-lg);}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border-lt);}
+.modal-hdr h3{font-size:17px;font-weight:700;color:var(--navy);}
+.modal-body{padding:22px;}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--mid);line-height:1;}
+/* filter bar */
+.filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.filter-bar input{flex:1;min-width:200px;padding:9px 13px;border:1.5px solid var(--border);border-radius:var(--r);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;background:var(--card);}
+.filter-bar input:focus{outline:none;border-color:var(--blue);}
+.filter-bar select{padding:9px 13px;border:1.5px solid var(--border);border-radius:var(--r);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;background:var(--card);cursor:pointer;}
+/* notif */
+.notif{position:fixed;top:18px;right:18px;padding:13px 20px;border-radius:var(--r);font-size:13.5px;font-weight:600;z-index:1000;box-shadow:var(--sh-lg);animation:sli .3s ease;}
+.notif.ok{background:var(--success);color:#fff;}.notif.err{background:var(--danger);color:#fff;}
+@keyframes sli{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
+hr.div{border:none;border-top:1px solid var(--border-lt);margin:22px 0;}
+.mt-s{margin-top:10px;}.mt-m{margin-top:18px;}.mt-l{margin-top:28px;}
+.curr-stage-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.curr-stage-badge.p1{background:#F5EEF8;color:var(--s1);}.curr-stage-badge.p2{background:#EBF5FB;color:var(--s2);}
+.curr-stage-badge.p3{background:#FEF9E7;color:var(--s3);}.curr-stage-badge.p4{background:#EAFAF1;color:var(--s4);}
+@media(max-width:768px){
+  .g2,.g3,.g4,.cl-grid,.doc-grid,.checks,.gen-row,.dash-stats,.stage-phases{grid-template-columns:1fr;}
+  .sidebar{width:56px;}.nav-item span:last-child{display:none;}.content{padding:16px;}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useMemo}=React;
+
+// ── CONSTANTS ────────────────────────────────────────────────────────────────
+const PHASES=[
+  {id:"p1",label:"Pre-WO",color:"var(--s1)",steps:[
+    {id:"proposal",label:"Proposal Submitted"},
+    {id:"adm_approval",label:"Admin Approval Obtained"},
+    {id:"fund_cert",label:"Fund Certificate Done"},
+    {id:"tech_sanction",label:"Technical Sanction Done"},
+    {id:"head_approval",label:"Head Approval Received"},
+  ]},
+  {id:"p2",label:"Tendering",color:"var(--s2)",steps:[
+    {id:"cppp_upload",label:"Uploaded on CPPP Portal"},
+    {id:"bid_wait",label:"Bid Period Running"},
+    {id:"bids_received",label:"Bids Received & Opened"},
+  ]},
+  {id:"p3",label:"Award",color:"var(--s3)",steps:[
+    {id:"comp_stmt",label:"Comparative Statement Prepared"},
+    {id:"draft_wo",label:"Draft WO Prepared"},
+    {id:"wo_committee",label:"WO Committee Clearance"},
+    {id:"pre_audit",label:"Pre-Audit by Accounts"},
+    {id:"wo_approved",label:"Work Order Approved"},
+    {id:"wo_released",label:"Work Order Released"},
+  ]},
+  {id:"p4",label:"Execution",color:"var(--s4)",steps:[
+    {id:"awaiting_delivery",label:"Awaiting Delivery"},
+    {id:"item_delivered",label:"Item Delivered"},
+    {id:"installation",label:"Installation & Commissioning"},
+    {id:"payment_done",label:"Payment Done"},
+  ]},
+];
+const ALL_STEPS=PHASES.flatMap(p=>p.steps.map(s=>({...s,phase:p.id})));
+const TOTAL_STEPS=ALL_STEPS.length;
+
+function currentPhase(progress){
+  const done=ALL_STEPS.filter(s=>progress[s.id]);
+  if(!done.length)return"p1";
+  const last=done[done.length-1];
+  return last.phase;
+}
+function pctDone(progress){
+  return Math.round((ALL_STEPS.filter(s=>progress[s.id]).length/TOTAL_STEPS)*100);
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function ls(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
+function sl(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+
+function numToWords(n){
+  if(!n||isNaN(n))return"";
+  n=Math.round(parseFloat(n));
+  if(n===0)return"Zero Only";
+  const o=["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+  const t=["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+  const b100=n=>n<20?o[n]:t[Math.floor(n/10)]+(n%10?" "+o[n%10]:"");
+  const b1k=n=>n<100?b100(n):o[Math.floor(n/100)]+" Hundred"+(n%100?" "+b100(n%100):"");
+  let r="",cr=Math.floor(n/10000000);n%=10000000;
+  let lk=Math.floor(n/100000);n%=100000;
+  let th=Math.floor(n/1000);n%=1000;
+  if(cr)r+=b1k(cr)+" Crore ";if(lk)r+=b100(lk)+" Lakh ";
+  if(th)r+=b100(th)+" Thousand ";if(n)r+=b1k(n);
+  return r.trim()+" Only";
+}
+
+// ── DEFAULTS ─────────────────────────────────────────────────────────────────
+const DEF_S={companyName:"COMPANY PRIVATE LIMITED",locationBoard:"COMPANY LOCATION BOARD",
+  division:"Division Name",divisionCode:"DIV",proposerName:"",proposerDesignation:"Engineer-In-Charge",
+  competentAuthority:"Superintending Engineer",hodName:"",hodDesignation:"Head of Division",
+  aoName:"",projectCoordinatorName:"",eprocureLink:"https://eprocure.gov.in/eprocure/app"};
+const DEF_BH=[
+  {id:1,type:"Revenue",label:"M&R - Civil",bh:"2215/FA/M&R/Civil",proj:"Maintenance & Repairs - Civil Works",hoa:"2215-01-051-00-00"},
+  {id:2,type:"Revenue",label:"M&R - Electrical",bh:"2215/FA/M&R/Elec",proj:"Maintenance & Repairs - Electrical",hoa:"2215-01-052-00-00"},
+  {id:3,type:"Capital",label:"New Construction",bh:"4216/FA/NC/Civil",proj:"New Construction Works",hoa:"4216-01-051-00-00"},
+  {id:4,type:"Capital",label:"Equipment Purchase",bh:"4216/FA/EP/Mech",proj:"Equipment & Machinery",hoa:"4216-01-053-00-00"},
+];
+const DEF_SUP=[
+  {id:1,name:"M/s ABC Fabricators",contact:"",email:""},
+  {id:2,name:"M/s XYZ Engineering Works",contact:"",email:""},
+  {id:3,name:"M/s PQR Metal Works",contact:"",email:""},
+  {id:4,name:"M/s LMN Steel Fabricators",contact:"",email:""},
+  {id:5,name:"M/s DEF Industrial Works",contact:"",email:""},
+];
+function blankForm(){
+  const cy=new Date().getFullYear();
+  return{workName:"",justification:"",scopeOfWork:"",
+    estimatedCost:"",estimatedCostWords:"",freeIssueMaterial:"NIL",
+    deliveryValue:"",deliveryUnit:"Months",
+    budgetHead:"",budgetType:"Revenue",selBhId:"",projectName:"",headOfAccount:"",
+    financialYear:`${cy}-${(cy+1).toString().slice(2)}`,
+    serialNo:"",date:new Date().toISOString().split("T")[0],
+    lastDateSubmission:"",lastDateSubmissionTime:"15:00",
+    bidOpeningDate:"",bidOpeningTime:"15:30",
+    selectedVendors:[],adminApprovalRef:"",technicalSanctionNo:"",
+    expenditureSanctioned:"",contingency:"",eicName:"",eicDesignation:"",
+    checklistItems:{costEstimateSigned:"Yes",basisOfEstimation:"Budgetary Quotes",
+      asPerManual:"Yes",noOfBudgetaryQuotes:"3",gstInclusive:"Yes",siteAvailable:"Yes",fundCertAttached:"Yes"}};
+}
+const STEPS_NAV=[
+  {id:"dashboard",label:"Dashboard",icon:"📊"},
+  null,
+  {id:"settings",label:"Settings",icon:"⚙️"},
+  {id:"work",label:"Work Details",icon:"📋"},
+  {id:"vendors",label:"Vendors",icon:"🏭"},
+  {id:"finance",label:"Finance",icon:"💰"},
+  {id:"generate",label:"Generate",icon:"📄"},
+];
+
+// ── ATOMS ─────────────────────────────────────────────────────────────────────
+function F({label,value,onChange,ph,type="text",ro,af}){
+  return(<div className="fld"><label>{label}</label>
+    <input type={type} value={value||""} onChange={e=>onChange&&onChange(e.target.value)}
+      placeholder={ph||""} readOnly={!!ro} className={af?"af":ro?"ro":""}/></div>);
+}
+function TA({label,value,onChange,rows=3,ph}){
+  return(<div className="fld"><label>{label}</label>
+    <textarea value={value||""} onChange={e=>onChange(e.target.value)} rows={rows} placeholder={ph||""}/></div>);
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function Dashboard({wos,onOpen,onDelete,onLoad,setStep}){
+  const [search,setSearch]=useState("");
+  const [filterPhase,setFilterPhase]=useState("all");
+  const [expandedId,setExpandedId]=useState(null);
+  const [confirmDel,setConfirmDel]=useState(null);
+
+  const filtered=useMemo(()=>{
+    let r=[...wos].sort((a,b)=>new Date(b.savedAt)-new Date(a.savedAt));
+    if(search)r=r.filter(w=>w.form.workName.toLowerCase().includes(search.toLowerCase())||w.form.serialNo.includes(search));
+    if(filterPhase!=="all")r=r.filter(w=>currentPhase(w.progress||{})===filterPhase);
+    return r;
+  },[wos,search,filterPhase]);
+
+  const stats={
+    total:wos.length,
+    p1:wos.filter(w=>currentPhase(w.progress||{})==="p1").length,
+    p2:wos.filter(w=>currentPhase(w.progress||{})==="p2").length,
+    p3:wos.filter(w=>currentPhase(w.progress||{})==="p3").length,
+    p4:wos.filter(w=>currentPhase(w.progress||{})==="p4").length,
+    done:wos.filter(w=>(w.progress||{})["payment_done"]).length,
+  };
+
+  return(
+    <div className="panel" style={{maxWidth:1000}}>
+      <div className="panel-hdr" style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div><h2>📊 Work Order Dashboard</h2><p>Track all limited tender work orders and their progress</p></div>
+        <button className="btn btn-blue" onClick={()=>setStep("work")}>+ New Work Order</button>
+      </div>
+
+      {/* Stats */}
+      <div className="dash-stats">
+        <div className="stat-card"><div className="stat-num">{stats.total}</div><div className="stat-lbl">Total WOs</div></div>
+        <div className="stat-card s1"><div className="stat-num">{stats.p1}</div><div className="stat-lbl">Pre-WO Stage</div></div>
+        <div className="stat-card s2"><div className="stat-num">{stats.p2}</div><div className="stat-lbl">Tendering</div></div>
+        <div className="stat-card s3"><div className="stat-num">{stats.p3}</div><div className="stat-lbl">Award Stage</div></div>
+        <div className="stat-card s4"><div className="stat-num">{stats.done}</div><div className="stat-lbl">Completed</div></div>
+      </div>
+
+      {/* Filter */}
+      <div className="filter-bar">
+        <input placeholder="🔍  Search by work name or ref no..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <select value={filterPhase} onChange={e=>setFilterPhase(e.target.value)}>
+          <option value="all">All Phases</option>
+          <option value="p1">Pre-WO</option>
+          <option value="p2">Tendering</option>
+          <option value="p3">Award</option>
+          <option value="p4">Execution</option>
+        </select>
+      </div>
+
+      {wos.length===0&&(
+        <div style={{textAlign:"center",padding:"60px 20px",color:"var(--light)"}}>
+          <div style={{fontSize:48,marginBottom:14}}>📂</div>
+          <div style={{fontWeight:700,fontSize:16,marginBottom:6,color:"var(--mid)"}}>No work orders saved yet</div>
+          <div style={{fontSize:14,marginBottom:20}}>Generate documents and save your first WO to track it here</div>
+          <button className="btn btn-blue" onClick={()=>setStep("work")}>+ Create First Work Order</button>
+        </div>
+      )}
+
+      <div className="wo-list">
+        {filtered.map(wo=>{
+          const pct=pctDone(wo.progress||{});
+          const ph=currentPhase(wo.progress||{});
+          const phInfo=PHASES.find(p=>p.id===ph);
+          const isExp=expandedId===wo.id;
+          const del=wo.form.deliveryValue&&wo.form.deliveryUnit?`${wo.form.deliveryValue} ${wo.form.deliveryUnit}`:"—";
+          return(
+            <div key={wo.id} className="wo-card">
+              <div className="wo-card-top" onClick={()=>setExpandedId(isExp?null:wo.id)}>
+                <div className="wo-stage-bar" style={{background:phInfo?.color||"var(--blue)"}}/>
+                <div className="wo-main">
+                  <div className="wo-ref">{wo.form.serialNo?`${wo.divCode}/${wo.form.financialYear}/${wo.form.serialNo}`:wo.form.financialYear} · Saved {new Date(wo.savedAt).toLocaleDateString("en-IN")}</div>
+                  <div className="wo-name">{wo.form.workName||"(Unnamed Work)"}</div>
+                  <div className="wo-meta">
+                    {wo.form.estimatedCost&&<span className="wo-tag cost">₹ {parseFloat(wo.form.estimatedCost).toLocaleString("en-IN")}</span>}
+                    <span className={`wo-tag btype ${wo.form.budgetType==="Revenue"?"R":"C"}`}>{wo.form.budgetType}</span>
+                    {wo.form.budgetHead&&<span className="wo-tag">{wo.form.budgetHead}</span>}
+                    <span className="wo-tag">⏱ {del}</span>
+                    <span className={`curr-stage-badge ${ph}`}>{phInfo?.label}</span>
+                    <span style={{fontSize:11.5,color:"var(--mid)",alignSelf:"center"}}>{pct}% complete</span>
+                  </div>
+                  <div className="prog-wrap" style={{marginTop:6}}>
+                    <div className="prog-bar-bg">
+                      <div className="prog-bar-fill" style={{width:pct+"%",background:phInfo?.color||"var(--blue)"}}/>
+                    </div>
+                  </div>
+                </div>
+                <div className="wo-actions" onClick={e=>e.stopPropagation()}>
+                  <button className="btn btn-sm btn-out" title="Load into form to edit & regenerate"
+                    onClick={()=>{onLoad(wo);setStep("work");}}>✏️ Edit</button>
+                  <button className="btn btn-sm btn-accent" title="Regenerate documents"
+                    onClick={()=>{onLoad(wo);setStep("generate");}}>📄 Docs</button>
+                  <button className="btn btn-red btn-sm" onClick={()=>setConfirmDel(wo.id)}>🗑</button>
+                </div>
+              </div>
+
+              {/* Expanded progress tracker */}
+              {isExp&&(
+                <div className="stage-prog">
+                  <div style={{fontWeight:700,fontSize:12,color:"var(--mid)",marginBottom:10,textTransform:"uppercase",letterSpacing:".8px"}}>Stage Progress — click to toggle</div>
+                  <div className="stage-phases">
+                    {PHASES.map(phase=>(
+                      <div key={phase.id} className="phase-block">
+                        <div className={`phase-label ${phase.id}`}>{phase.label}</div>
+                        <div className="phase-steps">
+                          {phase.steps.map(s=>{
+                            const done=!!(wo.progress||{})[s.id];
+                            return(
+                              <div key={s.id} className="step-item" onClick={()=>onOpen(wo.id,s.id,!done)}>
+                                <div className={`step-chk ${done?"done "+phase.id:""}`}>{done?"✓":""}</div>
+                                <span className={`step-lbl ${done?"done":""}`}>{s.label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Confirm delete modal */}
+      {confirmDel&&(
+        <div className="modal-bg" onClick={()=>setConfirmDel(null)}>
+          <div className="modal" style={{width:360}} onClick={e=>e.stopPropagation()}>
+            <div className="modal-hdr"><h3>Delete Work Order?</h3><button className="modal-close" onClick={()=>setConfirmDel(null)}>✕</button></div>
+            <div className="modal-body">
+              <p style={{fontSize:14,color:"var(--mid)",marginBottom:20}}>This action cannot be undone. The work order and all tracking data will be permanently deleted.</p>
+              <div style={{display:"flex",gap:10}}>
+                <button className="btn btn-blue" style={{flex:1}} onClick={()=>{onDelete(confirmDel);setConfirmDel(null);}}>Yes, Delete</button>
+                <button className="btn btn-out" style={{flex:1}} onClick={()=>setConfirmDel(null)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SETTINGS ─────────────────────────────────────────────────────────────────
+function SettingsPanel({settings,setSettings,bhs,setBhs,notify}){
+  const [loc,setLoc]=useState(settings);
+  const [nb,setNb]=useState({type:"Revenue",label:"",bh:"",proj:"",hoa:""});
+  const [show,setShow]=useState(false);
+  const u=(k,v)=>setLoc(l=>({...l,[k]:v}));
+  const save=()=>{setSettings(loc);notify("Settings saved!","ok");};
+  const addBH=()=>{
+    if(!nb.label||!nb.bh)return;
+    setBhs(b=>[...b,{id:Date.now(),...nb}]);
+    setNb({type:"Revenue",label:"",bh:"",proj:"",hoa:""});
+    setShow(false);notify("Budget head added!","ok");
+  };
+  return(
+    <div className="panel">
+      <div className="panel-hdr"><h2>⚙️ Company Settings</h2><p>Fill once — used in all generated documents.</p></div>
+      <div className="sec">Organisation Identity</div>
+      <div className="g2">
+        <F label="Company Name" value={loc.companyName} onChange={v=>u("companyName",v)}/>
+        <F label="Location Board" value={loc.locationBoard} onChange={v=>u("locationBoard",v)}/>
+        <F label="Division Name" value={loc.division} onChange={v=>u("division",v)}/>
+        <F label="Division Code (Ref prefix)" value={loc.divisionCode} onChange={v=>u("divisionCode",v)} ph="e.g. BARC(T)"/>
+      </div>
+      <div className="sec mt-l">Key Personnel</div>
+      <div className="g2">
+        <F label="Proposer / EIC Name" value={loc.proposerName} onChange={v=>u("proposerName",v)}/>
+        <F label="Proposer Designation" value={loc.proposerDesignation} onChange={v=>u("proposerDesignation",v)}/>
+        <F label="Competent Authority" value={loc.competentAuthority} onChange={v=>u("competentAuthority",v)}/>
+        <F label="HOD Name" value={loc.hodName} onChange={v=>u("hodName",v)}/>
+        <F label="HOD Designation" value={loc.hodDesignation} onChange={v=>u("hodDesignation",v)}/>
+        <F label="AO / DCA Name" value={loc.aoName} onChange={v=>u("aoName",v)}/>
+        <F label="Project Coordinator" value={loc.projectCoordinatorName} onChange={v=>u("projectCoordinatorName",v)}/>
+        <F label="E-Procurement Portal URL" value={loc.eprocureLink} onChange={v=>u("eprocureLink",v)}/>
+      </div>
+      <button className="btn btn-blue mt-l" onClick={save}>💾 Save Settings</button>
+      <hr className="div"/>
+      <div className="sec">Budget Heads Master List</div>
+      <div className="info-box">💡 In Finance tab: select Budget Type → pick a head → Project Name &amp; HOA auto-fill.</div>
+      <div className="bh-list">
+        {bhs.map(b=>(
+          <div key={b.id} className={`bh-row ${b.type[0]}`}>
+            <span className={`bh-tag ${b.type[0]}`}>{b.type}</span>
+            <div className="bh-info"><div className="bh-name">{b.label} — {b.bh}</div><div className="bh-det">{b.proj} | HOA: {b.hoa}</div></div>
+            <button className="btn-red" onClick={()=>setBhs(x=>x.filter(y=>y.id!==b.id))}>🗑</button>
+          </div>
+        ))}
+      </div>
+      <button className="btn btn-out" onClick={()=>setShow(!show)}>{show?"✕ Cancel":"+ Add Budget Head"}</button>
+      {show&&(
+        <div className="add-form mt-m">
+          <div className="g2">
+            <div className="fld"><label>Budget Type</label>
+              <select value={nb.type} onChange={e=>setNb(n=>({...n,type:e.target.value}))}>
+                <option>Revenue</option><option>Capital</option>
+              </select>
+            </div>
+            <F label="Short Label ★" value={nb.label} onChange={v=>setNb(n=>({...n,label:v}))} ph="e.g. M&R Civil"/>
+            <F label="Budget Head / Code ★" value={nb.bh} onChange={v=>setNb(n=>({...n,bh:v}))} ph="e.g. 2215/FA/M&R/Civil"/>
+            <F label="Project Name / Scheme" value={nb.proj} onChange={v=>setNb(n=>({...n,proj:v}))} ph="Auto-fills in Finance tab"/>
+            <F label="Head of Account" value={nb.hoa} onChange={v=>setNb(n=>({...n,hoa:v}))} ph="e.g. 2215-01-051-00-00"/>
+          </div>
+          <button className="btn btn-blue mt-s" onClick={addBH}>✅ Add</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── WORK DETAILS ─────────────────────────────────────────────────────────────
+function WorkPanel({form,setForm,settings,getRefNo}){
+  const u=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const cy=new Date().getFullYear();
+  const fys=[`${cy-1}-${cy.toString().slice(2)}`,`${cy}-${(cy+1).toString().slice(2)}`,`${cy+1}-${(cy+2).toString().slice(2)}`];
+  useEffect(()=>{
+    if(form.estimatedCost)u("estimatedCostWords",numToWords(form.estimatedCost));
+    else u("estimatedCostWords","");
+  },[form.estimatedCost]);
+  const delStr=form.deliveryValue&&form.deliveryUnit?`${form.deliveryValue} ${form.deliveryUnit}`:"";
+  return(
+    <div className="panel">
+      <div className="panel-hdr"><h2>📋 Work Details</h2><p>Core information shared across all documents</p></div>
+      <div className="sec">Reference Number</div>
+      <div className="g3">
+        <div className="fld"><label>Division Code</label><input value={settings.divisionCode} readOnly className="ro"/></div>
+        <div className="fld"><label>Financial Year</label>
+          <select value={form.financialYear} onChange={e=>u("financialYear",e.target.value)}>
+            {fys.map(y=><option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+        <F label="Serial No." value={form.serialNo} onChange={v=>u("serialNo",v)} ph="e.g. 42"/>
+      </div>
+      <div className="ref-prev">📌 Ref No: <strong>{getRefNo()}</strong></div>
+      <div className="sec mt-l">Work Information</div>
+      <div className="g1">
+        <F label="Name of Work ★" value={form.workName} onChange={v=>u("workName",v)} ph="e.g. Fabrication and erection of MS structure at Building No. XYZ"/>
+        <TA label="Justification for Work ★" value={form.justification} onChange={v=>u("justification",v)} rows={3} ph="Why this work is needed..."/>
+        <TA label="Scope of Work & Technical Specification (Annexure-A)" value={form.scopeOfWork} onChange={v=>u("scopeOfWork",v)} rows={5} ph="Detailed scope — appears as Annexure-A in Proposal and Enquiry Letter."/>
+      </div>
+      <div className="g2 mt-m">
+        <div>
+          <F label="Estimated Cost (₹) ★" value={form.estimatedCost} onChange={v=>u("estimatedCost",v)} ph="e.g. 850000" type="number"/>
+          {form.estimatedCostWords&&<div className="words-prev">✍ {form.estimatedCostWords}</div>}
+        </div>
+        <F label="Estimated Cost in Words" value={form.estimatedCostWords} onChange={v=>u("estimatedCostWords",v)} ph="Auto-filled from amount" af={!!form.estimatedCost}/>
+        <F label="Free Issue Material" value={form.freeIssueMaterial} onChange={v=>u("freeIssueMaterial",v)} ph="NIL or list items"/>
+        <F label="Document Date" value={form.date} onChange={v=>u("date",v)} type="date"/>
+      </div>
+      <div className="sec mt-l">Delivery / Time Schedule ★</div>
+      <div className="info-box">Enter number and select unit. This fills "Time Schedule" in all documents.</div>
+      <div className="g2">
+        <div className="fld">
+          <label>Duration &amp; Unit</label>
+          <div className="unit-row">
+            <input type="number" min="1" value={form.deliveryValue||""} onChange={e=>u("deliveryValue",e.target.value)} placeholder="e.g. 3"/>
+            <select value={form.deliveryUnit||"Months"} onChange={e=>u("deliveryUnit",e.target.value)}>
+              <option>Months</option><option>Days</option><option>Weeks</option>
+            </select>
+          </div>
+        </div>
+        {delStr&&<F label="Will appear as" value={delStr} ro/>}
+      </div>
+      <div className="sec mt-l">Tender Schedule (CPPP)</div>
+      <div className="g2">
+        <F label="Last Date of Submission" value={form.lastDateSubmission} onChange={v=>u("lastDateSubmission",v)} type="date"/>
+        <F label="Submission Time" value={form.lastDateSubmissionTime} onChange={v=>u("lastDateSubmissionTime",v)} type="time"/>
+        <F label="Bid Opening Date" value={form.bidOpeningDate} onChange={v=>u("bidOpeningDate",v)} type="date"/>
+        <F label="Bid Opening Time" value={form.bidOpeningTime} onChange={v=>u("bidOpeningTime",v)} type="time"/>
+      </div>
+    </div>
+  );
+}
+
+// ── VENDORS ──────────────────────────────────────────────────────────────────
+function VendorPanel({sups,form,toggle,showAdd,setShowAdd,nSup,setNSup,addSup,remSup,selObjs}){
+  return(
+    <div className="panel">
+      <div className="panel-hdr"><h2>🏭 Vendor Management</h2><p>Select 3–5 vendors. Master list saved permanently.</p></div>
+      <div className="sec">Selected Vendors ({form.selectedVendors.length}/5)</div>
+      {form.selectedVendors.length===0&&<div className="empty">No vendors selected. Pick from the list below (minimum 3 required).</div>}
+      {selObjs.length>0&&<div className="chips">
+        {selObjs.map((s,i)=>(
+          <div key={s.id} className="chip">
+            <span className="chip-n">{i+1}</span><span>{s.name}</span>
+            <button className="chip-x" onClick={()=>toggle(s.id)}>✕</button>
+          </div>
+        ))}
+      </div>}
+      <div className="sec mt-l">Master Supplier List</div>
+      <div className="sup-list">
+        {sups.map(s=>(
+          <div key={s.id} className={`sup-row ${form.selectedVendors.includes(s.id)?"sel":""}`}>
+            <input type="checkbox" checked={form.selectedVendors.includes(s.id)} onChange={()=>toggle(s.id)}
+              disabled={!form.selectedVendors.includes(s.id)&&form.selectedVendors.length>=5}/>
+            <div className="sup-info">
+              <div className="sup-name">{s.name}</div>
+              {s.contact&&<div className="sup-meta">📞 {s.contact}</div>}
+              {s.email&&<div className="sup-meta">✉️ {s.email}</div>}
+            </div>
+            <button className="btn-red" onClick={()=>remSup(s.id)}>🗑</button>
+          </div>
+        ))}
+      </div>
+      <button className="btn btn-out mt-m" onClick={()=>setShowAdd(!showAdd)}>{showAdd?"✕ Cancel":"+ Add New Supplier"}</button>
+      {showAdd&&(
+        <div className="add-form mt-m">
+          <div className="g3">
+            <F label="Supplier Name ★" value={nSup.name} onChange={v=>setNSup(n=>({...n,name:v}))} ph="M/s ..."/>
+            <F label="Contact" value={nSup.contact} onChange={v=>setNSup(n=>({...n,contact:v}))}/>
+            <F label="Email" value={nSup.email} onChange={v=>setNSup(n=>({...n,email:v}))}/>
+          </div>
+          <button className="btn btn-blue mt-s" onClick={addSup}>✅ Add to Master List</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── FINANCE ──────────────────────────────────────────────────────────────────
+function FinancePanel({form,setForm,bhs}){
+  const u=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const uCL=(k,v)=>setForm(f=>({...f,checklistItems:{...f.checklistItems,[k]:v}}));
+  const filtered=bhs.filter(b=>b.type===form.budgetType);
+  const pickBH=(bhId)=>{
+    if(!bhId){u("selBhId","");return;}
+    const b=bhs.find(x=>String(x.id)===String(bhId));
+    if(b)setForm(f=>({...f,selBhId:bhId,budgetHead:b.bh,projectName:b.proj,headOfAccount:b.hoa}));
+  };
+  return(
+    <div className="panel">
+      <div className="panel-hdr"><h2>💰 Finance &amp; Sanction Details</h2><p>Used in Fund Certification, Technical Sanction, Admin Approval and Checklist</p></div>
+      <div className="sec">Budget Selection</div>
+      <div className="info-box">Select Budget Type → pick a Budget Head → Project Name &amp; HOA auto-fill (yellow).</div>
+      <div className="g2">
+        <div className="fld"><label>Budget Type ★</label>
+          <select value={form.budgetType} onChange={e=>{u("budgetType",e.target.value);u("selBhId","");}}>
+            <option>Revenue</option><option>Capital</option>
+          </select>
+        </div>
+        <div className="fld"><label>Select Saved Budget Head</label>
+          <select value={form.selBhId||""} onChange={e=>pickBH(e.target.value)}>
+            <option value="">— Choose from master list —</option>
+            {filtered.map(b=><option key={b.id} value={b.id}>{b.label} ({b.bh})</option>)}
+          </select>
+        </div>
+        <F label="Budget Head / Code ★" value={form.budgetHead} onChange={v=>u("budgetHead",v)} ph="Auto-filled or type manually" af={!!form.selBhId}/>
+        <F label="Project Name / Scheme" value={form.projectName} onChange={v=>u("projectName",v)} af={!!form.selBhId}/>
+        <F label="Head of Account (HOA)" value={form.headOfAccount} onChange={v=>u("headOfAccount",v)} af={!!form.selBhId}/>
+        <F label="Admin Approval Ref No." value={form.adminApprovalRef} onChange={v=>u("adminApprovalRef",v)}/>
+        <F label="Technical Sanction No." value={form.technicalSanctionNo} onChange={v=>u("technicalSanctionNo",v)}/>
+        <F label="Expenditure Sanctioned (₹)" value={form.expenditureSanctioned} onChange={v=>u("expenditureSanctioned",v)} type="number"/>
+        <F label="Contingency Amount (₹)" value={form.contingency} onChange={v=>u("contingency",v)} type="number"/>
+        <F label="EIC Name" value={form.eicName} onChange={v=>u("eicName",v)}/>
+        <F label="EIC Designation" value={form.eicDesignation} onChange={v=>u("eicDesignation",v)}/>
+      </div>
+      <div className="sec mt-l">Checklist Responses</div>
+      <div className="cl-grid">
+        {[["costEstimateSigned","Cost estimate signed by EIC?",["Yes","No"]],
+          ["basisOfEstimation","Basis of estimation?",["Budgetary Quotes","SOR","Previous Work Order","Market Survey"]],
+          ["asPerManual","As per Internal Manual 2023?",["Yes","No","NA"]],
+          ["noOfBudgetaryQuotes","No. of budgetary quotes?",["3","4","5"]],
+          ["gstInclusive","Quote inclusive of GST?",["Yes","No"]],
+          ["siteAvailable","Site available?",["Yes","No"]],
+          ["fundCertAttached","Fund Availability Certificate attached?",["Yes","No"]],
+        ].map(([k,l,o])=>(
+          <div key={k} className="cl-item"><label>{l}</label>
+            <select value={form.checklistItems[k]} onChange={e=>uCL(k,e.target.value)}>
+              {o.map(x=><option key={x}>{x}</option>)}
+            </select>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── GENERATE ─────────────────────────────────────────────────────────────────
+function GenPanel({form,settings,selObjs,generating,generated,doGen,getRefNo,onSave,savedId}){
+  const cost=parseFloat(form.estimatedCost)||0;
+  const del=form.deliveryValue&&form.deliveryUnit?`${form.deliveryValue} ${form.deliveryUnit}`:"";
+  const checks=[
+    ["Work Name",!!form.workName],["Estimated Cost",!!form.estimatedCost],
+    ["Budget Head",!!form.budgetHead],["Delivery Period",!!(form.deliveryValue&&form.deliveryUnit)],
+    ["Vendors (min 3)",form.selectedVendors.length>=3],["Submission Date",!!form.lastDateSubmission],
+  ];
+  const ready=checks.every(c=>c[1]);
+  const docs=[
+    {n:"Proposal for Limited Tender",f:"1_Proposal_LT.docx",i:"📝"},
+    {n:"Administrative Approval",f:"2_Admin_Approval.docx",i:"✅"},
+    {n:`Fund Certification (${form.budgetType})`,f:"3_Fund_Certification.docx",i:"💰"},
+    {n:"Technical Sanction",f:"4_Technical_Sanction.docx",i:"🔧"},
+    {n:"Enquiry Letter (CPPP)",f:"5_Enquiry_Letter_CPPP.docx",i:"📨"},
+    {n:"Checklist for Limited Tender",f:"6_Checklist.docx",i:"☑️"},
+  ];
+  return(
+    <div className="panel">
+      <div className="panel-hdr"><h2>📄 Generate &amp; Save</h2><p>Generate documents and save this WO to the dashboard for tracking</p></div>
+      <div className="sec">Work Summary</div>
+      <div className="sum-card">
+        <div className="sum-row"><span>Ref No.</span><strong>{getRefNo()}</strong></div>
+        <div className="sum-row"><span>Name of Work</span><strong>{form.workName||"—"}</strong></div>
+        <div className="sum-row"><span>Estimated Cost</span><strong>₹ {cost.toLocaleString("en-IN")}{form.estimatedCostWords?` (${form.estimatedCostWords})`:""}</strong></div>
+        <div className="sum-row"><span>Budget</span><strong>{form.budgetType} — {form.budgetHead||"—"}</strong></div>
+        <div className="sum-row"><span>Delivery Period</span><strong>{del||"—"}</strong></div>
+        <div className="sum-row"><span>Vendors</span><strong>{selObjs.length>0?selObjs.map(v=>v.name).join(", "):"None selected"}</strong></div>
+        <div className="sum-row"><span>Submission Deadline</span><strong>{form.lastDateSubmission||"—"} {form.lastDateSubmissionTime}</strong></div>
+      </div>
+      <div className="sec mt-l">Readiness Check</div>
+      <div className="checks">
+        {checks.map(([l,ok])=><div key={l} className={`ck ${ok?"ok":"no"}`}>{ok?"✅":"❌"} {l}</div>)}
+      </div>
+      {!ready&&<div className="warn">⚠️ Complete all required fields before generating.</div>}
+      <div className="sec mt-l">Documents</div>
+      <div className="doc-grid">
+        {docs.map(d=>(
+          <div key={d.f} className="doc-item">
+            <span className="doc-ic">{d.i}</span>
+            <div><div className="doc-nm">{d.n}</div><div className="doc-fl">{d.f}</div></div>
+          </div>
+        ))}
+      </div>
+      <div className="gen-row">
+        <button className="btn-gen navy" onClick={()=>doGen("separate")} disabled={!ready||!!generating}>
+          {generating==="separate"?"⏳ Generating...":"📂 6 Separate .docx Files"}
+        </button>
+        <button className="btn-gen teal" onClick={()=>doGen("combined")} disabled={!ready||!!generating}>
+          {generating==="combined"?"⏳ Generating...":"📄 1 Combined .docx File"}
+        </button>
+      </div>
+      {generated&&<div className="ok-box mt-m">✅ {generated==="separate"?"All 6 documents downloaded.":"Combined file downloaded."}</div>}
+      <hr className="div"/>
+      <div className="sec">Save to Dashboard</div>
+      <div className="info-box">💾 Save this work order to the dashboard to track its progress through all stages. You can edit and regenerate documents anytime.</div>
+      <button className="btn btn-blue" style={{width:"100%",padding:14,fontSize:15}} onClick={onSave} disabled={!form.workName}>
+        {savedId?"💾 Update Saved Work Order":"💾 Save to Dashboard"}
+      </button>
+    </div>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────────────────────
+function App(){
+  const [step,setStep]=useState("dashboard");
+  const [settings,setSettings]=useState(()=>ls("lt_s",DEF_S));
+  const [sups,setSups]=useState(()=>ls("lt_sup",DEF_SUP));
+  const [bhs,setBhs]=useState(()=>ls("lt_bh",DEF_BH));
+  const [wos,setWos]=useState(()=>ls("lt_wos",[]));
+  const [form,setForm]=useState(blankForm);
+  const [currentWoId,setCurrentWoId]=useState(null); // id of WO being edited
+  const [nSup,setNSup]=useState({name:"",contact:"",email:""});
+  const [showAdd,setShowAdd]=useState(false);
+  const [generating,setGenerating]=useState(false);
+  const [generated,setGenerated]=useState(null);
+  const [notif,setNotif]=useState(null);
+
+  useEffect(()=>{sl("lt_s",settings);},[settings]);
+  useEffect(()=>{sl("lt_sup",sups);},[sups]);
+  useEffect(()=>{sl("lt_bh",bhs);},[bhs]);
+  useEffect(()=>{sl("lt_wos",wos);},[wos]);
+
+  const getRefNo=()=>`${settings.divisionCode}/${form.financialYear}/${form.serialNo||"__"}`;
+  const notify=(msg,type="ok")=>{setNotif({msg,type});setTimeout(()=>setNotif(null),3500);};
+
+  const addSup=()=>{if(!nSup.name.trim())return;setSups(s=>[...s,{id:Date.now(),...nSup}]);setNSup({name:"",contact:"",email:""});setShowAdd(false);notify("Supplier added ✓");};
+  const remSup=(id)=>{setSups(s=>s.filter(x=>x.id!==id));setForm(f=>({...f,selectedVendors:f.selectedVendors.filter(v=>v!==id)}));};
+  const toggle=(id)=>setForm(f=>{const s=f.selectedVendors.includes(id)?f.selectedVendors.filter(v=>v!==id):f.selectedVendors.length<5?[...f.selectedVendors,id]:f.selectedVendors;return{...f,selectedVendors:s};});
+  const selObjs=sups.filter(s=>form.selectedVendors.includes(s.id));
+
+  // Save / update WO to dashboard
+  const saveWo=()=>{
+    if(!form.workName){notify("Work name required to save","err");return;}
+    if(currentWoId){
+      // update existing
+      setWos(ws=>ws.map(w=>w.id===currentWoId?{...w,form,divCode:settings.divisionCode,updatedAt:new Date().toISOString()}:w));
+      notify("Work order updated in dashboard ✓","ok");
+    } else {
+      const newWo={id:Date.now(),form,divCode:settings.divisionCode,savedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),progress:{}};
+      setWos(ws=>[newWo,...ws]);
+      setCurrentWoId(newWo.id);
+      notify("Work order saved to dashboard ✓","ok");
+    }
+  };
+
+  // Load a WO into the form
+  const loadWo=(wo)=>{setForm(wo.form);setCurrentWoId(wo.id);setGenerated(null);};
+
+  // Toggle a progress step
+  const toggleStep=(woId,stepId,val)=>{
+    setWos(ws=>ws.map(w=>w.id===woId?{...w,progress:{...(w.progress||{}),[stepId]:val}}:w));
+  };
+
+  // Delete a WO
+  const deleteWo=(id)=>{setWos(ws=>ws.filter(w=>w.id!==id));if(currentWoId===id){setCurrentWoId(null);setForm(blankForm());}notify("Deleted","ok");};
+
+  // New blank form
+  const newForm=()=>{setForm(blankForm());setCurrentWoId(null);setGenerated(null);setStep("work");};
+
+  const doGen=async(mode)=>{
+    setGenerating(mode);
+    try{await generateDocs(form,settings,sups,mode);setGenerated(mode);notify(mode==="separate"?"6 documents downloaded!":"Combined file downloaded!","ok");}
+    catch(e){notify("Error: "+e.message,"err");console.error(e);}
+    setGenerating(false);
+  };
+
+  return(
+    <div className="app">
+      {notif&&<div className={`notif ${notif.type}`}>{notif.msg}</div>}
+      <header className="header">
+        <div className="header-inner">
+          <div className="logo-area">
+            <div className="logo-icon">LT</div>
+            <div><div className="app-title">Limited Tender Manager</div>
+              <div className="app-sub">Document Generator &amp; Work Order Tracker · ≤ ₹10L</div></div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            {currentWoId&&<div style={{background:"rgba(232,160,32,.2)",color:"#E8A020",fontSize:11.5,fontWeight:700,padding:"4px 12px",borderRadius:10,border:"1px solid rgba(232,160,32,.4)"}}>✏️ Editing saved WO</div>}
+            <div className="ref-badge">Ref: {getRefNo()} &nbsp;|&nbsp; {form.date||"—"}</div>
+          </div>
+        </div>
+      </header>
+      <div className="layout">
+        <nav className="sidebar">
+          <div className="nav-label">Overview</div>
+          <button className={`nav-item ${step==="dashboard"?"active":""}`} onClick={()=>setStep("dashboard")}>
+            <span>📊</span><span>Dashboard</span>
+          </button>
+          <div className="nav-sep"/>
+          <div className="nav-label">New / Edit WO</div>
+          <button className="nav-item" style={{color:"rgba(255,255,255,0.4)",fontSize:12}} onClick={newForm}>
+            <span>➕</span><span>New Blank WO</span>
+          </button>
+          {[{id:"settings",l:"Settings",i:"⚙️"},{id:"work",l:"Work Details",i:"📋"},{id:"vendors",l:"Vendors",i:"🏭"},{id:"finance",l:"Finance",i:"💰"},{id:"generate",l:"Generate & Save",i:"📄"}].map(s=>(
+            <button key={s.id} className={`nav-item ${step===s.id?"active":""}`} onClick={()=>setStep(s.id)}>
+              <span>{s.i}</span><span>{s.l}</span>
+            </button>
+          ))}
+        </nav>
+        <main className="content">
+          {step==="dashboard"&&<Dashboard wos={wos} onOpen={toggleStep} onDelete={deleteWo} onLoad={loadWo} setStep={setStep}/>}
+          {step==="settings"&&<SettingsPanel settings={settings} setSettings={setSettings} bhs={bhs} setBhs={setBhs} notify={notify}/>}
+          {step==="work"&&<WorkPanel form={form} setForm={setForm} settings={settings} getRefNo={getRefNo}/>}
+          {step==="vendors"&&<VendorPanel sups={sups} form={form} toggle={toggle} showAdd={showAdd} setShowAdd={setShowAdd} nSup={nSup} setNSup={setNSup} addSup={addSup} remSup={remSup} selObjs={selObjs}/>}
+          {step==="finance"&&<FinancePanel form={form} setForm={setForm} bhs={bhs}/>}
+          {step==="generate"&&<GenPanel form={form} settings={settings} selObjs={selObjs} generating={generating} generated={generated} doGen={doGen} getRefNo={getRefNo} onSave={saveWo} savedId={currentWoId}/>}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+// ── DOCX ENGINE ───────────────────────────────────────────────────────────────
+async function generateDocs(form,settings,suppliers,mode){
+  const {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,AlignmentType,BorderStyle,WidthType,ShadingType}=window.docx;
+  const sel=suppliers.filter(s=>form.selectedVendors.includes(s.id));
+  const refNo=`${settings.divisionCode}/${form.financialYear}/${form.serialNo||"__"}`;
+  const fmtD=d=>d?new Date(d).toLocaleDateString("en-IN",{day:"2-digit",month:"2-digit",year:"numeric"}):"__/__/____";
+  const ds=fmtD(form.date);const cost=parseFloat(form.estimatedCost)||0;const conting=parseFloat(form.contingency)||0;const twc=cost+conting;
+  const inr=n=>n.toLocaleString("en-IN");const isCap=form.budgetType==="Capital";
+  const del=form.deliveryValue&&form.deliveryUnit?`${form.deliveryValue} ${form.deliveryUnit}`:"__";
+  const FONT="Arial";const nb={style:BorderStyle.NONE,size:0,color:"FFFFFF"};const tb={style:BorderStyle.SINGLE,size:4,color:"BDC3C7"};
+  const ab=b=>({top:b,bottom:b,left:b,right:b});const cm={top:80,bottom:80,left:140,right:140};
+  const pp={page:{size:{width:11906,height:16838},margin:{top:1080,right:1080,bottom:1080,left:1260}}};
+  const P=(tx,o={})=>new Paragraph({alignment:o.c?AlignmentType.CENTER:o.r?AlignmentType.RIGHT:AlignmentType.LEFT,spacing:{before:o.before||60,after:o.after||60},children:[new TextRun({text:String(tx||""),font:FONT,size:o.sz||22,bold:o.b||false,underline:o.ul?{}:undefined,color:o.col||"000000"})]});
+  const PR=(runs,o={})=>new Paragraph({alignment:o.c?AlignmentType.CENTER:o.r?AlignmentType.RIGHT:AlignmentType.LEFT,spacing:{before:o.before||60,after:o.after||60},children:runs.map(r=>new TextRun({font:FONT,size:22,...r}))});
+  const HR=()=>new Paragraph({border:{bottom:{style:BorderStyle.SINGLE,size:6,color:"1A2742",space:1}},spacing:{before:80,after:80},children:[]});
+  const LH=()=>[P(settings.companyName,{b:true,c:true,sz:28,before:0}),P(settings.locationBoard,{c:true,sz:24}),P(settings.division+" Division",{c:true,sz:22}),HR()];
+  const SIG=(l,r)=>new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[4513,4513],borders:ab(nb),rows:[new TableRow({children:[new TableCell({width:{size:4513,type:WidthType.DXA},borders:ab(nb),margins:cm,children:l.map(t=>P(t,{sz:20}))}),new TableCell({width:{size:4513,type:WidthType.DXA},borders:ab(nb),margins:cm,children:r.map(t=>P(t,{r:true,sz:20}))})]})]});
+  const TR=(lbl,val,sh)=>new TableRow({children:[new TableCell({width:{size:3000,type:WidthType.DXA},borders:ab(tb),margins:cm,shading:sh?{fill:"EBF5FB",type:ShadingType.CLEAR}:undefined,children:[P(lbl,{b:true,sz:20})]}),new TableCell({width:{size:6026,type:WidthType.DXA},borders:ab(tb),margins:cm,children:[P(val||"—",{sz:20})]})]});
+  const TH=(cols,ws)=>new TableRow({children:cols.map((c,i)=>new TableCell({width:{size:ws[i],type:WidthType.DXA},borders:ab(tb),margins:cm,shading:{fill:"1A2742",type:ShadingType.CLEAR},children:[P(c,{b:true,sz:20,col:"FFFFFF",c:true})]}))});
+  const b1=[...LH(),P("PROPOSAL FOR LIMITED TENDER",{b:true,c:true,sz:26,ul:true,before:140,after:140}),new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[3000,6026],rows:[TR("Ref No.",refNo,true),TR("Date",ds),TR("Name of Work",form.workName,true),TR("Justification",form.justification),TR("Scope of Work","Detailed scope and technical specifications are given in Annexure-A",true),TR("Estimated Cost",`Rs. ${inr(cost)}/- (Rupees ${form.estimatedCostWords||"__________"} Only)`),TR("Free Issue Material",form.freeIssueMaterial||"NIL",true),TR("Time Schedule / Delivery Period",del),TR("Budget Head",form.budgetHead,true),TR("Mode of Tendering","Limited Tender through e-tendering (CPPP Portal)"),]}),P(""),P("Vendors Proposed:",{b:true,before:120}),P("It is proposed to contact following bidders:"),new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[700,4200,2063,2063],rows:[TH(["Sr.","Vendor Name","Contact","Email"],[700,4200,2063,2063]),...sel.map((v,i)=>new TableRow({children:[new TableCell({width:{size:700,type:WidthType.DXA},borders:ab(tb),margins:cm,children:[P(String(i+1),{c:true,sz:20})]}),new TableCell({width:{size:4200,type:WidthType.DXA},borders:ab(tb),margins:cm,children:[P(v.name,{sz:20})]}),new TableCell({width:{size:2063,type:WidthType.DXA},borders:ab(tb),margins:cm,children:[P(v.contact||"—",{sz:20})]}),new TableCell({width:{size:2063,type:WidthType.DXA},borders:ab(tb),margins:cm,children:[P(v.email||"—",{sz:20})]})]}))]}),P(""),P("Kindly approve the proposal.",{before:120}),P(""),SIG([settings.proposerName,settings.proposerDesignation,"(Proposer)"],[settings.competentAuthority,"(Competent Authority)"]),P(""),HR(),P("Annexure-A: Scope of Work and Technical Specification",{b:true,ul:true,before:160}),P(form.scopeOfWork||"—",{before:80})];
+  const b2=[...LH(),P("ADMINISTRATIVE APPROVAL",{b:true,c:true,sz:26,ul:true,before:140,after:140}),new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[3000,6026],rows:[TR("Ref No.",refNo,true),TR("Date",ds),TR("1. Name of Work",form.workName,true),TR("2. History / Background",form.justification||"—"),TR("3. Brief Description",form.scopeOfWork||"—",true),TR("4. Block Estimate",`Rs. ${inr(cost)}/- (${form.estimatedCostWords||"__________"} Only)`),TR("5. Budget Head",form.budgetHead,true),TR("6. Mode of Execution","Limited e-Tendering Mode (CPPP Portal)"),TR("7. Expected Time to Complete",del,true)]}),P(""),P("The Competent Authority is requested to kindly accord approval for the same.",{before:120}),P(""),SIG([settings.proposerName,settings.proposerDesignation,"(Engineer-in-Charge)"],[settings.competentAuthority,"(Competent Authority)"])];
+  const b3=[P(isCap?"PROFORMA – I(A)":"PROFORMA – I",{b:true,c:true,sz:24,before:0}),P(`REQUISITION FOR EARMARKED FUNDS (${form.budgetType.toUpperCase()})`,{b:true,c:true,sz:24}),P("(PROPOSAL STAGE / WO STAGE)",{c:true,sz:20}),HR(),new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[3000,6026],rows:[TR("Re. No.",refNo,true),TR("Date",ds),TR("Name & Designation of Proposer",`${settings.proposerName}, ${settings.proposerDesignation}`,true),TR("Division",settings.division),TR("Name of Work / Item",form.workName,true),TR("Total Funds Required",`Rs. ${inr(cost)}/-`),TR("Head of Account",form.headOfAccount||form.budgetHead,true),TR("Financial Year",form.financialYear),TR("Project / Scheme Name",form.projectName||"—",true),...(isCap?[TR("Project Coordinator",settings.projectCoordinatorName||"—")]:[])]}),P(""),P("Projected Year-wise Expenditure:",{b:true,before:120}),new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[4513,4513],rows:[new TableRow({children:[new TableCell({width:{size:4513,type:WidthType.DXA},borders:ab(tb),margins:cm,shading:{fill:"EBF5FB",type:ShadingType.CLEAR},children:[P("Financial Year",{b:true,sz:20})]}),new TableCell({width:{size:4513,type:WidthType.DXA},borders:ab(tb),margins:cm,shading:{fill:"EBF5FB",type:ShadingType.CLEAR},children:[P("Amount (Rs.)",{b:true,sz:20})]})]}),new TableRow({children:[new TableCell({width:{size:4513,type:WidthType.DXA},borders:ab(tb),margins:cm,children:[P(form.financialYear,{sz:20})]}),new TableCell({width:{size:4513,type:WidthType.DXA},borders:ab(tb),margins:cm,children:[P(`Rs. ${inr(cost)}/-`,{sz:20})]})]}),]}),P(""),SIG([settings.hodName||"__________",settings.hodDesignation,"(HOD / Head of Section)"],[settings.proposerName,settings.proposerDesignation,"(Proposer)"]),P(""),HR(),...(isCap?[P("ALLOCATION OF FUNDS BY PROJECT COORDINATOR",{b:true,before:120}),P(""),SIG(["Date:"],[(settings.projectCoordinatorName||"__________"),"(Project Coordinator)"]),HR()]:[]),P("CERTIFICATION OF AVAILABILITY OF FUNDS",{b:true,before:120}),P(`Funds earmarked against Head of Account: ${form.headOfAccount||form.budgetHead||"__________"}`),P(`For the Financial Year: ${form.financialYear} and noted in the commitment register.`),P(""),SIG(["Date:"],[(settings.aoName||"__________"),"(AO/DCA)"])];
+  const bal=(parseFloat(form.expenditureSanctioned)||0)-twc;
+  const b4=[...LH(),P("TECHNICAL SANCTION",{b:true,c:true,sz:26,ul:true,before:140,after:140}),new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[3000,6026],rows:[TR("Technical Sanction No.",form.technicalSanctionNo||`TS/${refNo}`,true),TR("Date",ds),TR("1. Name of Work",form.workName,true),TR("2. Admin Approval / Proposal Ref",form.adminApprovalRef||refNo),TR("3. Estimated Cost",`Rs. ${inr(cost)}/-`,true),TR("4. Provision in Project Estimate",isCap?"Yes":"Not applicable (Revenue Budget)"),TR("5. Financial Sanction / Fund Availability Ref.",form.adminApprovalRef||"—",true),TR("6. Head of Account",form.headOfAccount||form.budgetHead),TR("7. Expenditure Sanctioned Amount",form.expenditureSanctioned?`Rs. ${inr(parseFloat(form.expenditureSanctioned))}/-`:"—",true),TR("8. Amount Technically Sanctioned (incl. contingency)",`Rs. ${inr(twc)}/-`),TR("9. Balance Amount",isCap?`Rs. ${inr(bal)}/-`:"Not applicable (Revenue Budget)",true)]}),P(""),P(`Technically sanctioned for Rupees ${form.estimatedCostWords||"__________"} Only (Rs. ${inr(cost)}/-) as per the enclosed cost estimate.`,{before:120}),P(""),P("",{before:480}),SIG([],[settings.competentAuthority,"(Competent Authority)"])];
+  const inst=["Details of work to be carried out are given in the Annexure. Please quote accordingly.","To participate in the tender, Bidders are required to login on the above website with their User ID / Password & Class III Digital Signature Certificate.","Bidders have to fill the excel documents and upload the same without renaming it. Please refer Help Manual for submission of bid.",`Work shall be initiated immediately and completed within ${del} from the date of receipt of the Work Order.`,`Last date of submission of e-bids: ${fmtD(form.lastDateSubmission)} up to ${form.lastDateSubmissionTime} hrs.`,`E-Bids will be opened on: ${fmtD(form.bidOpeningDate)} at ${form.bidOpeningTime} hrs on the CPPP portal.`,"100% payment will be made within 30 days against Invoice and certificate from competent authority.","Technical specifications are given in the Annexure.","The quoted rates shall be inclusive of all taxes.","The Bidder should be registered with EPF. The offer should accompany EPF registration number."];
+  const b5=[...LH(),P("ENQUIRY FOR LIMITED TENDER",{b:true,c:true,sz:26,ul:true,before:140,after:140}),HR(),PR([{text:"Ref. No.: ",bold:true},{text:refNo}],{before:80}),PR([{text:"Date: ",bold:true},{text:ds}],{before:40}),P(""),P("To,"),...sel.map(v=>P(v.name,{b:true})),P(""),PR([{text:"Sub: ",bold:true},{text:`"${form.workName}"`,bold:true}]),P(""),P("Dear Sir/Madam,"),P(""),P("You are requested to submit your quotation for the job as per the specifications attached through e-tendering mode on:"),P(settings.eprocureLink,{b:true,col:"1F618D"}),P(""),P("General Instructions:",{b:true,ul:true}),...inst.map((t,i)=>PR([{text:`${i+1}. `,bold:true},{text:t}],{before:60})),P(""),P("Yours sincerely,"),P(""),P("",{before:400}),P(settings.proposerName,{b:true}),P(settings.proposerDesignation),P(settings.division+" Division"),P(""),HR(),P("Annexure: Scope of Work and Technical Specification",{b:true,ul:true}),P(form.scopeOfWork||"—",{before:80})];
+  const cl=form.checklistItems;const cli=[["1","Whether the Departmental cost estimate is signed by EIC",cl.costEstimateSigned],["2",`Basis of cost estimation (${cl.basisOfEstimation})`,cl.basisOfEstimation],["3","Whether Cost estimate is prepared as per latest Internal Manual 2023?",cl.asPerManual],["4","Number of Budgetary quotes obtained (min 3 required):",cl.noOfBudgetaryQuotes+" quotes"],["5","Whether the quote is inclusive of GST?",cl.gstInclusive],["6","Whether site is available?",cl.siteAvailable],["7",`Administrative Approving Authority: ${settings.competentAuthority}`,"Noted"],["8","Whether Administrative Approval and Technical Sanction approved from Competent Authority?","Yes"],["9","Whether the Fund Availability Certificate approved by Competent authority and attached?",cl.fundCertAttached],["10","Any other information to be shared","NIL"]];
+  const b6=[P("CHECKLIST FOR LIMITED TENDER / WORK ORDER PROPOSALS",{b:true,c:true,sz:24,ul:true,before:100,after:100}),HR(),new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[3000,6026],rows:[TR("Name of Work",form.workName,true),TR("Estimated Cost",`Rs. ${inr(cost)}/-`),TR("Mode of Tendering","Limited Tender through e-tendering",true)]}),P(""),new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[500,5526,3000],rows:[TH(["Sr.","Description of Checklist Items","Remark by EIC"],[500,5526,3000]),...cli.map(([sr,desc,rem])=>new TableRow({children:[new TableCell({width:{size:500,type:WidthType.DXA},borders:ab(tb),margins:cm,children:[P(sr,{c:true,sz:20})]}),new TableCell({width:{size:5526,type:WidthType.DXA},borders:ab(tb),margins:cm,children:[P(desc,{sz:20})]}),new TableCell({width:{size:3000,type:WidthType.DXA},borders:ab(tb),margins:cm,shading:{fill:"EBF5FB",type:ShadingType.CLEAR},children:[P(rem,{b:true,sz:20})]})]}))]}),P(""),P("I have checked the above points and agree with the remarks mentioned.",{before:120}),P(""),P("",{before:400}),P(form.eicName||settings.proposerName,{b:true}),P(form.eicDesignation||settings.proposerDesignation),P(`Date: ${ds}`),P("(Signature of EIC with Date)")];
+  const SEP=(t)=>[new Paragraph({pageBreakBefore:true,children:[]}),P(`— ${t} —`,{b:true,c:true,sz:28,before:200,after:200}),HR()];
+  const dl=async(doc,name)=>{const blob=await Packer.toBlob(doc);const u=URL.createObjectURL(blob);const a=document.createElement("a");a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);};
+  if(mode==="combined"){
+    const all=[...b1,...SEP("ADMINISTRATIVE APPROVAL"),...b2,...SEP(`FUND CERTIFICATION (${form.budgetType.toUpperCase()})`),...b3,...SEP("TECHNICAL SANCTION"),...b4,...SEP("ENQUIRY LETTER (CPPP)"),...b5,...SEP("CHECKLIST FOR LIMITED TENDER"),...b6];
+    await dl(new Document({sections:[{properties:pp,children:all}]}),"All_LT_Documents.docx");
+  } else {
+    const files=[[b1,"1_Proposal_LT.docx"],[b2,"2_Admin_Approval.docx"],[b3,`3_Fund_Certification_${form.budgetType}.docx`],[b4,"4_Technical_Sanction.docx"],[b5,"5_Enquiry_Letter_CPPP.docx"],[b6,"6_Checklist.docx"]];
+    for(const [body,name] of files){await dl(new Document({sections:[{properties:pp,children:body}]}),name);await new Promise(r=>setTimeout(r,350));}
+  }
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
